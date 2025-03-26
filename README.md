@@ -64,11 +64,11 @@ Run the scanner using the following command:
 **Example Usage**
 
 # Basic scan of the target with default settings
-python turbo_vuln_scanner.py 192.168.1.1
+python scanner.py 192.168.1.1
 
 # Scan specific ports with a custom timeout
-python turbo_vuln_scanner.py 192.168.1.1 -p 80,443,8000-9000 -t 2.0
+python scanner.py 192.168.1.1 -p 80,443,8000-9000 -t 2.0
 
 # Use a custom Nmap argument
-python turbo_vuln_scanner.py 192.168.1.1 --nmap-args "-sS -O"
+python scanner.py 192.168.1.1 --nmap-args "-sS -O"
 
