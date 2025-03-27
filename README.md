@@ -80,3 +80,10 @@ Once done , check you mailbox , you'll have your api-key in there
 
 then:
    python scanner.py 192.168.1.1 --nvd-api-key [API KEY]
+
+![Screenshot_2025-03-27_10_54_55](https://github.com/user-attachments/assets/c2f647fc-7580-4c6e-a04b-cb4d04d841e9)
+
+
+![Screenshot_2025-03-27_10_54_59](https://github.com/user-attachments/assets/f8522a3c-5d2e-4a57-93cc-7f426e9cb9af)
+
+
