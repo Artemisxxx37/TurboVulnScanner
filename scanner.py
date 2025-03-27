@@ -133,33 +133,91 @@ class NmapIntegration:
         return vulns
 
 class VulnerabilityAnalyzer:
-    """Handles CVE lookups and vulnerability prioritization"""
+    """Handles CVE lookups with proper NVD API v2 integration"""
     def __init__(self, config: ScanConfig):
         self.config = config
-        self.nvd_url = "https://services.nvd.nist.gov/rest/json/cves/1.0"
+        self.nvd_url = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+        self.headers = {"apiKey": config.nvd_api_key} if config.nvd_api_key else {}
+
+    def _convert_to_cpe23(self, cpe: str) -> str:
+        """Convert any CPE format to CPE 2.3 standard"""
+        try:
+            parts = cpe.split(":")
+            if parts[0] == "cpe" and len(parts) < 13:
+                # Pad with wildcards for missing components
+                return ":".join(parts + ["*"]*(13 - len(parts)))[:13]
+            return cpe
+        except:
+            return cpe
 
     def check_cves(self, service: Dict) -> List[Dict]:
         cves = []
-        headers = {"apiKey": self.config.nvd_api_key} if self.config.nvd_api_key else {}
         
         for cpe in service["cpes"]:
-            params = {"cpeMatchString": cpe, "resultsPerPage": 10}
             try:
+                # Convert to CPE 2.3 format
+                cpe23 = self._convert_to_cpe23(cpe)
+                
+                params = {
+                    "cpeName": cpe23,
+                    "resultsPerPage": 5,
+                    "startIndex": 0
+                }
+
                 response = requests.get(
                     self.nvd_url,
                     params=params,
-                    headers=headers,
-                    timeout=10
+                    headers=self.headers,
+                    timeout=15
                 )
-                cves.extend(response.json().get("result", {}).get("CVE_Items", []))
-            except requests.RequestException as e:
-                print(f"{Fore.YELLOW}NVD API error: {str(e)}")
+                response.raise_for_status()
+
+                data = response.json()
+                vulnerabilities = data.get("vulnerabilities", [])
+
+                for vuln in vulnerabilities:
+                    cve_data = vuln.get("cve", {})
+                    cve_id = cve_data.get("id", "")
+                    
+                    # Extract description
+                    descriptions = cpe_data.get("descriptions", [])
+                    description = next(
+                        (desc["value"] for desc in descriptions if desc["lang"] == "en"),
+                        "No description available"
+                    )
+                    
+                    # Extract CVSS score
+                    metrics = cve_data.get("metrics", {})
+                    cvss_score = None
+                    
+                    for version in ["cvssMetricV31", "cvssMetricV30", "cvssMetricV2"]:
+                        if version in metrics:
+                            cvss_score = metrics[version][0]["cvssData"]["baseScore"]
+                            break
+
+                    cves.append({
+                        "id": cve_id,
+                        "description": description,
+                        "cvss": cvss_score
+                    })
+
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 403:
+                    msg = "403 Forbidden - Invalid or missing API key" if self.config.nvd_api_key \
+                        else "403 Forbidden - API key required (get one from https://nvd.nist.gov/developers/request-an-api-key)"
+                    print(f"{Fore.YELLOW}NVD API Error: {msg}")
+                elif e.response.status_code == 404:
+                    print(f"{Fore.YELLOW}Invalid CPE format: {cpe} (converted to {cpe23})")
+                else:
+                    print(f"{Fore.YELLOW}NVD API Error: {str(e)}")
+            except Exception as e:
+                print(f"{Fore.YELLOW}Error processing {cpe}: {str(e)}")
         
-        return sorted(cves, key=lambda x: float(
-            x["impact"]["baseMetricV3"]["cvssV3"]["baseScore"]
-            if x["impact"].get("baseMetricV3")
-            else x["impact"]["baseMetricV2"]["cvssV2"]["baseScore"]
-        ), reverse=True)[:5]  # Return top 5 CVEs
+        return sorted(
+            [cve for cve in cves if cve["cvss"] is not None],
+            key=lambda x: x["cvss"],
+            reverse=True
+        )
 
 def print_results(services: List[Dict], config: ScanConfig):
     """Display scan results with colored output"""
