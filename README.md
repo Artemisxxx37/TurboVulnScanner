@@ -61,6 +61,8 @@ Run the scanner using the following command:
     --nmap-args: Additional arguments to pass to Nmap (default: -sV --script vulners,vuln).
     --nvd-api-key: Your NVD API key for CVE lookups (optional).
 
+
+
 **Example Usage**
 
 # Basic scan of the target with default settings
@@ -72,3 +74,9 @@ python scanner.py 192.168.1.1 -p 80,443,8000-9000 -t 2.0
 # Use a custom Nmap argument
 python scanner.py 192.168.1.1 --nmap-args "-sS -O"
 
+# Use it with your nist api key
+go on https://nvd.nist.gov/ , get registered using your mail and setting up your details ; 
+Once done , check you mailbox , you'll have your api-key in there
+
+then:
+   python scanner.py 192.168.1.1 --nvd-api-key [API KEY]
