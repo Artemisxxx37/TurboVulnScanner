@@ -1,0 +1,9 @@
+# Core dependencies
+requests>=2.26.0
+colorama>=0.4.4
+
+# Python version requirement (due to dataclasses and modern async features)
+python>=3.7
+
+# Optional but recommended for better performance
+aiohttp>=3.8.0
